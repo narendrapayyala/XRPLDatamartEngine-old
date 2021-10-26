@@ -50,7 +50,7 @@ async function getBalance(account) {
       },
     ],
   };
-  console.log(process.env.XRPL_CLIENT_ADDRESS);
+
   const response = await fetch(process.env.XRPL_CLIENT_ADDRESS, {
     method: "post",
     body: JSON.stringify(payload),
