@@ -36,6 +36,44 @@ router.post("/get-balance", async function (req, res, next) {
   }
 });
 
+router.get("/transactions/:account", async function (req, res, next) {
+  try {
+    console.log(req.params);
+    const payload = {
+      method: "account_tx",
+      params: [
+        {
+          account: req.params.account,
+          // binary: false,
+          // forward: false,
+          ledger_index_max: -1,
+          ledger_index_min: -1,
+          limit: 15,
+        },
+      ],
+    };
+    const response = await fetch(process.env.XRPL_CLIENT_ADDRESS, {
+      method: "post",
+      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await response.json();
+    return res.send(data);
+  } catch (err) {
+    if (err.details) {
+      return res
+        .status(400)
+        .send({ status: false, message: err.details[0].message });
+    } else {
+      console.log(err);
+      return res.status(500).send({
+        status: false,
+        message: err.message ? err.message : "Internal Server Error.",
+      });
+    }
+  }
+});
+
 module.exports = router;
 
 async function getBalance(account) {
