@@ -52,10 +52,10 @@ router.post("/get-balance/csv", async function (req, res, next) {
           Address: obj.result.account_data.Account,
           Balance: obj.result.account_data.Balance,
           Ledger: obj.result.ledger_current_index,
-          Flags: obj.result.account_data.Flags,
+          Validated: obj.result.validated,
         });
       });
-      const csvFields = ["Address", "Balance", "Ledger Index", "Flags"];
+      const csvFields = ["Address", "Balance", "Ledger Index", "Validated"];
       const csvParser = new CsvParser({ csvFields });
       const csvData = csvParser.parse(csvPayload);
       res.setHeader("Content-Type", "text/csv");
@@ -93,7 +93,8 @@ router.post("/get-balance/pdf", async function (req, res, next) {
       );
       let response = await Promise.all(requests);
       let balanceSheetPDFDocDefinition = await BalanceSheetPDFTemplate(
-        response
+        response,
+        req.body.ds_date
       );
       let pdfData = await createPDFBinary(balanceSheetPDFDocDefinition);
       res.setHeader("Content-Type", "application/pdf");
@@ -187,20 +188,30 @@ router.post("/db/sync", async function (req, res, next) {
         `CREATE DATABASE IF NOT EXISTS ${req.body.database}`
       );
       await connection.execute(
-        `DROP TABLE IF EXISTS ${req.body.database}.${moment().format(
-          "YYYYMMDDHH"
-        )}`
+        `DROP TABLE IF EXISTS ${req.body.database}.${
+          req.body.ds_date
+            ? req.body.ds_date.split("-").join("")
+            : moment().format("DDMMYYYY")
+        }`
       );
       await connection.execute(
-        `CREATE TABLE ${req.body.database}.${moment().format(
-          "YYYYMMDDHH"
-        )} (id int NOT NULL AUTO_INCREMENT, address varchar(255), balance varchar(255), ledger_index varchar(255), flags varchar(255), PRIMARY KEY (id))`
+        `CREATE TABLE ${req.body.database}.${
+          req.body.ds_date
+            ? req.body.ds_date.split("-").join("")
+            : moment().format("DDMMYYYY")
+        } (id int NOT NULL AUTO_INCREMENT, address varchar(255), balance varchar(255), ledger_index varchar(255), validated BOOLEAN, PRIMARY KEY (id))`
       );
-      let insert_query = `INSERT INTO ${req.body.database}.${moment().format(
-        "YYYYMMDDHH"
-      )} (address, balance, ledger_index, flags) values`;
+      let insert_query = `INSERT INTO ${req.body.database}.${
+        req.body.ds_date
+          ? req.body.ds_date.split("-").join("")
+          : moment().format("DDMMYYYY")
+      } (address, balance, ledger_index, validated) values`;
       accounts_data.forEach((obj, index) => {
-        insert_query += `('${obj.result.account_data.Account}', '${obj.result.account_data.Balance}', '${obj.result.ledger_current_index}', '${obj.result.account_data.Flags}')`;
+        insert_query += `('${obj.result.account_data.Account}', '${
+          obj.result.account_data.Balance
+        }', '${obj.result.ledger_current_index}', '${
+          obj.result.validated ? 1 : 0
+        }')`;
         if (index !== accounts_data.length - 1) {
           insert_query += ",";
         }
